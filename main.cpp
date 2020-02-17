@@ -480,7 +480,11 @@ int main(int num_args, char** args)
 {
 
     bool param_sweep = true;
-    std::vector<int> k_sweep{1,2,3,5,10,20};
+    if(num_args != 2)
+        throw std::invalid_argument("ONE INPUT REQUIRED.");
+    //TODO: for now, 'k' is used to parallelise on clusters, but easy to make work with all params for later.
+    std::vector<int> k_sweep{ std::stoi(args[1]) }; 
+    //std::vector<int> k_sweep{1,2,3,5,10,20};
     std::vector<int> i_sweep{0,1,2,5,10,20};
     std::vector<int> d_sweep{1,2,3,5,10,20};
     std::vector<float> m_sweep{0.01,0.04,0.08,0.2};
