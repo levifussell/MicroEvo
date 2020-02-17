@@ -40,6 +40,7 @@ int NUM_SPECIES = pow((1.0/SPECIES_BIN), 3);
 
 int EPOCHS = 500;
 int unchanged_counter = 0;
+std::string BASE_LOCATION = "";
 
 // recording.
 std::vector< std::vector<int> > species_distributions;
@@ -372,8 +373,9 @@ void record_species_distributions()
 void save_species_distributions()
 {
 	std::ostringstream os;
-	os << "data/" << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
+	os << BASE_LOCATION << "data/" << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
 	std::string name = os.str();
+	std::cout << "SAVING AT: " << name << "\n";
 	std::fstream fout;
 	fout.open(name, std::ios::out);
 	for(int k = 0; k < species_distributions.size(); ++k)
@@ -479,11 +481,13 @@ float run_step(
 int main(int num_args, char** args)
 {
 
+    BASE_LOCATION = args[1];
+
     bool param_sweep = true;
-    if(num_args != 2)
-        throw std::invalid_argument("ONE INPUT REQUIRED.");
+    if(num_args != 3)
+        throw std::invalid_argument("TWO INPUTS REQUIRED.");
     //TODO: for now, 'k' is used to parallelise on clusters, but easy to make work with all params for later.
-    std::vector<int> k_sweep{ std::stoi(args[1]) }; 
+    std::vector<int> k_sweep{ std::stoi(args[2]) }; 
     //std::vector<int> k_sweep{1,2,3,5,10,20};
     std::vector<int> i_sweep{0,1,2,5,10,20};
     std::vector<int> d_sweep{1,2,3,5,10,20};
