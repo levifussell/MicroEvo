@@ -1,3 +1,5 @@
 *.csv
 *.swp
 *.tar.gz
+*.pdf
+job*.sh

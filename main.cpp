@@ -23,12 +23,12 @@ sf::Image drawTexture;
 
 // PARAMS.
 int KILL_RADIUS = 2;
-int INHIBIT_RADIUS = 1;
+int INHIBIT_RADIUS = 2;
 int GROW_RADIUS = 2;
 //float MARGIN = 0.1;
-float KILL_MARGIN = 0.1;
+float KILL_MARGIN = 0.2;
 float INHIBIT_MARGIN = 0.01;
-float MUTATE_SIZE = 0.05;
+float MUTATE_SIZE = 0.01;
 int VERSION = 0;
 //const int KILL_RADIUS = 3;
 //const int INHIBIT_RADIUS = 1;
@@ -38,7 +38,7 @@ int VERSION = 0;
 float SPECIES_BIN = 0.05;
 int NUM_SPECIES = pow((1.0/SPECIES_BIN), 3);
 
-int EPOCHS = 500;
+int EPOCHS = 5000;
 int unchanged_counter = 0;
 std::string BASE_LOCATION = "";
 
@@ -406,12 +406,12 @@ float run_step(
 
     init();
 
-    bool headless = true;
+    bool headless = false;
 
 
     // comment & uncomment if headless (TOOD: make cleaner).
-    //sf::RenderWindow window(sf::VideoMode(SCREEN_SIZE, SCREEN_SIZE), "micro");
-    sf::RenderWindow window;
+    sf::RenderWindow window(sf::VideoMode(SCREEN_SIZE, SCREEN_SIZE), "micro");
+    //sf::RenderWindow window;
 
     clock_t start_time = clock();
     double sec_delay = 0.1;
@@ -480,64 +480,69 @@ float run_step(
 
 int main(int num_args, char** args)
 {
-
+    std::cout << "START\n";
     BASE_LOCATION = args[1];
 
-    bool param_sweep = true;
-    if(num_args != 3)
-        throw std::invalid_argument("TWO INPUTS REQUIRED.");
-    //TODO: for now, 'k' is used to parallelise on clusters, but easy to make work with all params for later.
-    std::vector<int> k_sweep{ std::stoi(args[2]) }; 
-    //std::vector<int> k_sweep{1,2,3,5,10,20};
-    std::vector<int> i_sweep{0,1,2,5,10,20};
-    std::vector<int> d_sweep{1,2,3,5,10,20};
-    std::vector<float> m_sweep{0.01,0.04,0.08,0.2};
-    std::vector<float> epk_sweep{0.05,0.1,0.2,0.4};
-    std::vector<float> epi_sweep{0.01,0.05,0.1,0.2};
-    std::vector<int> version{0,1,2};
+    std::cout << "BASE LOCATION: " << BASE_LOCATION << "\n";
 
-    int total = k_sweep.size() * i_sweep.size() * d_sweep.size() * m_sweep.size() * epk_sweep.size() * epi_sweep.size() * version.size();
-    int count = 0;
-    float avg_time = 0.0;
+    bool param_sweep = false;
+    if(param_sweep && num_args != 3)
+        throw std::invalid_argument("TWO INPUTS REQUIRED.");
 
     if(param_sweep)
     {
-	for(int v : version)
-	{
-		for(int k : k_sweep)
-		{
-			for(int i : i_sweep)
-			{
-				for(int d : d_sweep)
-				{
-					for(float m : m_sweep)
-					{
-						for(float ek : epk_sweep)
-						{
-							for(float ei : epi_sweep)
-							{
-								std::cout << "START: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
-								float time_complete = run_step(k, i, d, ek, ei, m, v);
-								if(avg_time == 0.0)
-									avg_time = time_complete;
-								else
-									avg_time = 0.9*avg_time + 0.1*time_complete;
-								std::cout << "DONE: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
-								count += 1;
-								std::cout << "\t" << count << "/" << total << "\n";
-								std::cout << "PRED. TIME LEFT: " << avg_time*(total-count)/(60.0*60.0) << "h\n";
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+        //TODO: for now, 'k' is used to parallelise on clusters, but easy to make work with all params for later.
+        std::vector<int> k_sweep{ std::stoi(args[2]) }; 
+        //std::vector<int> k_sweep{1,2,3,5,10,20};
+        std::vector<int> i_sweep{0,1,2,5,10,20};
+        std::vector<int> d_sweep{1,2,3,5,10,20};
+        std::vector<float> m_sweep{0.01,0.04,0.08,0.2};
+        std::vector<float> epk_sweep{0.05,0.1,0.2,0.4};
+        std::vector<float> epi_sweep{0.01,0.05,0.1,0.2};
+        std::vector<int> version{0,1,2};
+
+        int total = k_sweep.size() * i_sweep.size() * d_sweep.size() * m_sweep.size() * epk_sweep.size() * epi_sweep.size() * version.size();
+        int count = 0;
+        float avg_time = 0.0;
+
+        for(int v : version)
+        {
+            for(int k : k_sweep)
+            {
+                for(int i : i_sweep)
+                {
+                    for(int d : d_sweep)
+                    {
+                        for(float m : m_sweep)
+                        {
+                            for(float ek : epk_sweep)
+                            {
+                                for(float ei : epi_sweep)
+                                {
+                                    std::cout << "START: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
+
+                                    float time_complete = run_step(k, i, d, ek, ei, m, v);
+
+                                    if(avg_time == 0.0)
+                                        avg_time = time_complete;
+                                    else
+                                        avg_time = 0.9*avg_time + 0.1*time_complete;
+                                    std::cout << "DONE: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
+                                    count += 1;
+                                    std::cout << "\t" << count << "/" << total << "\n";
+                                    std::cout << "PRED. TIME LEFT: " << avg_time*(total-count)/(60.0*60.0) << "h\n";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     else
     {
-	std::cout << "RUNNING NO PARAMETER SWEEP.\n";
-    	run_step(KILL_RADIUS, INHIBIT_RADIUS, GROW_RADIUS, KILL_MARGIN, INHIBIT_MARGIN, MUTATE_SIZE, VERSION);
+        std::cout << "RUNNING NO PARAMETER SWEEP.\n";
+            run_step(KILL_RADIUS, INHIBIT_RADIUS, GROW_RADIUS, KILL_MARGIN, INHIBIT_MARGIN, MUTATE_SIZE, VERSION);
     }
 
     return 0;

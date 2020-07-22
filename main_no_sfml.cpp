@@ -5,6 +5,8 @@
 #include <math.h>
 #include <fstream>
 #include <sstream>
+#include <assert.h>
+#include <stdexcept>
 
 bool init_done = false;
 
@@ -18,14 +20,16 @@ std::vector< std::vector<double> > kill;
 
 //ART: 3,0,3,0.2,0.02,
 
+std::string RUN_FILE_NAME = "TEST";
+
 // PARAMS.
 int KILL_RADIUS = 2;
-int INHIBIT_RADIUS = 1;
+int INHIBIT_RADIUS = 2;
 int GROW_RADIUS = 2;
 //float MARGIN = 0.1;
-float KILL_MARGIN = 0.1;
+float KILL_MARGIN = 0.2;
 float INHIBIT_MARGIN = 0.01;
-float MUTATE_SIZE = 0.05;
+float MUTATE_SIZE = 0.01;
 int VERSION = 0;
 //const int KILL_RADIUS = 3;
 //const int INHIBIT_RADIUS = 1;
@@ -33,11 +37,15 @@ int VERSION = 0;
 //const float MARGIN = 0.003;
 //const float MUTATE_SIZE = 0.05;
 float SPECIES_BIN = 0.05;
-int NUM_SPECIES = pow((1.0/SPECIES_BIN), 3);
+int SPECIES_PER_DIM = (int)(1.0/SPECIES_BIN) + 1;
+int NUM_SPECIES = pow(SPECIES_PER_DIM, 3);
 
-int EPOCHS = 500;
+int EPOCHS = 1000;
 int unchanged_counter = 0;
+int NUM_RUNS_COUNTER = 0;
 std::string BASE_LOCATION = "";
+
+int SEED = 13;
 
 // recording.
 std::vector< std::vector<int> > species_distributions;
@@ -60,13 +68,31 @@ float run_step(
 	float kill_margin, float inhibit_margin, float mutate_size,
 	int version);
 
+std::vector<int> int_range_inclusive(int min, int max);
+std::vector<float> float_range_inclusive(float min, float max, int count);
+template<typename T>
+void print_vector(std::vector<T> v, std::string name);
+void run_param_sweep(int num_args, char** args);
+
+std::vector<float> get_all_run_stats();
+void compute_shannon_diversity(std::vector<int> histogram, 
+        float& shannon_diversity, float& shannon_equit_index);
+float mean(std::vector<float> v);
+float variance(std::vector<float> v, float mean);
+void compute_mean_var_shannon_diversity_over_time(
+        std::vector< std::vector<int> > data,
+        float& mean_shannon_diversity, float& var_shannon_diversity,
+        float& mean_shannon_equit_index, float& var_shannon_equit_index);
+void save_species_distributions();
+void save_all_run_stats();
+
 void init()
 {
     std::cout << "INIT\n";
     if(!init_done)
     {
 	    //srand(time(NULL));
-	    srand(13);
+	    srand(SEED);
 
 	    antibiotic = std::vector< std::vector<double> >(LATTICE_SIZE);
 	    vulnerable = std::vector< std::vector<double> >(LATTICE_SIZE);
@@ -316,29 +342,147 @@ void update()
     spread();
 }
 
+//void hash_species(int a, int v, int i)
+//{
+//    //int h = (int)(a/SPECIES_BIN) + (SPECIES_PER_DIM+1)*(int)(v/SPECIES_PER_BIN) + (SPECIES_PER_DIM+(SPECIES_PER_DIM+1)*SPECIES_PER_DIM+1)*(int)(i/SPECIES_PER_BIN);
+//    int h = (int)(a/SPECIES_BIN) + (SPECIES_PER_DIM+1)*(int)(v/SPECIES_PER_BIN) + ((SPECIES_PER_DIM+SPECIES_PER_DIM+1)*SPECIES_PER_DIM+1)*(int)(i/SPECIES_PER_BIN);
+//    return h
+//}
+
 void record_species_distributions()
 {
-	std::vector<int> distr(NUM_SPECIES, 0);
+    int unstackedDistr[SPECIES_PER_DIM][SPECIES_PER_DIM][SPECIES_PER_DIM];
+    for(int i = 0; i < SPECIES_PER_DIM; ++i) {
+        for(int j = 0; j < SPECIES_PER_DIM; ++j) {
+            for(int k = 0; k < SPECIES_PER_DIM; ++k) {
+                unstackedDistr[i][j][k] = 0;
+            }
+        }
+    }
 	for(int k = 0; k < LATTICE_SIZE; ++k)
 	{
 		for(int j = 0; j < LATTICE_SIZE; ++j)
 		{
 			if(antibiotic.at(k).at(j) != -1)
 			{
-				int s_id = 1 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN) + 10 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN) + 100 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN);
+				//int s_id = 1 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN) + 10 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN) + 100 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN);
+				//int s_id = 1 * (int)(antibiotic.at(k).at(j) / SPECIES_BIN) + (SPECIES_PER_DIM+1) * (int)(antibiotic.at(k).at(j) / SPECIES_BIN) +  (SPECIES_PER_DIM+(SPECIES_PER_DIM+1)*SPECIES_PER_DIM+1)* (int)(antibiotic.at(k).at(j) / SPECIES_BIN);
+                //int s_id = hash_species(antibiotic.at(k).at(j), vulnerable.at(k).at(j), inhibit.at(k).at(j));
 				//std::cout << s_id << "\n";
-				distr.at(s_id) += 1;
+				//distr.at(s_id) += 1;
+                int x = (int)(antibiotic.at(k).at(j) / SPECIES_BIN);
+                int y = (int)(vulnerable.at(k).at(j) / SPECIES_BIN);
+                int z = (int)(inhibit.at(k).at(j) / SPECIES_BIN);
+                //std::cout << x << ", " << y << ", " << z << "\n";
+                //std::cout << SPECIES_PER_DIM << "\n";
+                assert (x >= 0 && x < SPECIES_PER_DIM);
+                assert (y >= 0 && y < SPECIES_PER_DIM);
+                assert (z >= 0 && z < SPECIES_PER_DIM);
+                unstackedDistr[x][y][z] += 1;
 			}
 		}
 	}
 
+	std::vector<int> distr;
+    for(int i = 0; i < SPECIES_PER_DIM; ++i) {
+        for(int j = 0; j < SPECIES_PER_DIM; ++j) {
+            for(int k = 0; k < SPECIES_PER_DIM; ++k) {
+                distr.push_back(unstackedDistr[i][j][k]);
+            }
+        }
+    }
+    assert (distr.size() == sizeof(unstackedDistr) / sizeof(int));
+
 	species_distributions.push_back(distr);
+}
+
+std::vector<float> get_all_run_stats()
+{
+    std::vector<float> run = std::vector<float>{
+        (float)KILL_RADIUS, (float)INHIBIT_RADIUS, (float)GROW_RADIUS,
+        (float)KILL_MARGIN, (float)INHIBIT_MARGIN, (float)MUTATE_SIZE,
+        (float)VERSION, (float)SPECIES_BIN, (float)NUM_SPECIES, (float)EPOCHS,
+        (float)species_distributions.size()
+    };
+    float mean_sd, var_sd;
+    float mean_eqi, var_eqi;
+    compute_mean_var_shannon_diversity_over_time(
+        species_distributions,
+        mean_sd, var_sd,
+        mean_eqi, var_eqi);
+    run.push_back(mean_sd);
+    run.push_back(var_sd);
+    run.push_back(mean_eqi);
+    run.push_back(var_eqi);
+
+    return run;
+}
+
+void compute_shannon_diversity(std::vector<int> histogram, 
+        float& shannon_diversity, float& shannon_equit_index)
+{
+    // compute the mass of the histogram.
+    int total = 0;
+    for(int h : histogram)
+        total += h;
+    shannon_diversity = 0.0f;
+    for(int i = 0; i < histogram.size(); ++i)
+    {
+        float p = 0.0;
+        if(total > 0.0f)
+            p = (float)histogram.at(i) / (float)total;
+        
+        assert (p >= 0.0);
+        if(p > 0.0)
+            shannon_diversity -= p * log2(p);
+    }
+
+    shannon_equit_index = shannon_diversity / log2(NUM_SPECIES);
+}
+
+float mean(std::vector<float> v)
+{
+    float m = 0.0f;
+    for(float i : v)
+        m += i;
+    m /= v.size();
+    return m;
+}
+
+float variance(std::vector<float> v, float mean)
+{
+    float var = 0.0f;
+    for(int i : v)
+        var += pow((i - mean), 2);
+    var /= v.size()-1;
+    return var;
+}
+
+void compute_mean_var_shannon_diversity_over_time(
+        std::vector< std::vector<int> > data,
+        float& mean_shannon_diversity, float& var_shannon_diversity,
+        float& mean_shannon_equit_index, float& var_shannon_equit_index)
+{
+    std::vector<float> shannon_diversities(data.size());
+    std::vector<float> shannon_equit_indices(data.size());
+    for(int i = 0; i < data.size(); ++i)
+    {
+        float sd, eqi;
+        compute_shannon_diversity(data.at(i), sd, eqi);
+        shannon_diversities.at(i) = sd;
+        shannon_equit_indices.at(i) = eqi;
+    }
+
+    mean_shannon_diversity = mean(shannon_diversities);
+    var_shannon_diversity = variance(shannon_diversities, mean_shannon_diversity);
+    mean_shannon_equit_index = mean(shannon_equit_indices);
+    var_shannon_equit_index = variance(shannon_equit_indices, mean_shannon_equit_index);
 }
 
 void save_species_distributions()
 {
 	std::ostringstream os;
-	os << BASE_LOCATION << "data/" << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
+	os << BASE_LOCATION << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
 	std::string name = os.str();
 	std::cout << "SAVING AT: " << name << "\n";
 	std::fstream fout;
@@ -353,6 +497,24 @@ void save_species_distributions()
 		fout << "\n";
 	}
 	fout.close();
+}
+
+void save_all_run_stats()
+{
+    std::ostringstream os;
+
+    std::cout << "SAVING AT: " << RUN_FILE_NAME << "\n";
+    
+    std::fstream fout;
+    fout.open(RUN_FILE_NAME, std::ios::out | 
+            (NUM_RUNS_COUNTER == 0 ? std::ios::trunc : std::ios::app));
+    std::vector<float> run_data = get_all_run_stats();
+    for(int i = 0; i < run_data.size(); ++i)
+    {
+        fout << run_data.at(i) << (i < run_data.size() - 1 ? ", " : "");
+    }
+
+    fout << "\n";
 }
 
 float run_step(
@@ -376,7 +538,6 @@ float run_step(
 
     // comment & uncomment if headless (TOOD: make cleaner).
 
-    clock_t start_time = clock();
     double sec_delay = 0.1;
 
     int counter = 0;
@@ -385,23 +546,17 @@ float run_step(
 
     while(headless)
     {
-        //if((clock() - start_time) / (double)CLOCKS_PER_SEC > sec_delay)
-        if(true)
-        {
-            //std::cout << "UPDATE\n";
-            start_time = clock();
-
-            update();
+        update();
 	    record_species_distributions();
+
+        if(counter >= EPOCHS || unchanged_counter >= 5)
+        {
+            //save_species_distributions();
+            save_all_run_stats();
+            break;
         }
 
-	if(counter >= EPOCHS || unchanged_counter >= 5)
-	{
-	    save_species_distributions();
-	    break;
-	}
-
-	counter += 1;
+        counter += 1;
     }
 
     float time_diff = (clock() - begin_time)/(double)CLOCKS_PER_SEC;
@@ -409,66 +564,123 @@ float run_step(
     return time_diff;
 }
 
-int main(int num_args, char** args)
+std::vector<int> int_range_inclusive(int min, int max)
 {
+    std::vector<int> values(max-min+1);
+    for(int i = min; i < max+1; ++i)
+        values.at(i-min) = i;
+    assert (values.at(0) == min);
+    assert (values.at(max-min) == max);
+    return values;
+}
 
-    BASE_LOCATION = args[1];
+std::vector<float> float_range_inclusive(float min, float max, int count)
+{
+    std::vector<float> values(count);
+    for(float m = min, i = 0; i < count; m += (max - min)/(float)(count-1), ++i)
+        values.at(i) = m;
+    for(float f : values)
+        std::cout << f << ", ";
+    assert(abs(values.at(0) - min) < 0.0001);
+    assert(abs(values.at(count-1) - max) < 0.0001);
+    return values;
+}
 
-    bool param_sweep = true;
-    if(num_args != 3)
-        throw std::invalid_argument("TWO INPUTS REQUIRED.");
-    //TODO: for now, 'k' is used to parallelise on clusters, but easy to make work with all params for later.
-    std::vector<int> k_sweep{ std::stoi(args[2]) }; 
-    //std::vector<int> k_sweep{1,2,3,5,10,20};
-    std::vector<int> i_sweep{0,1,2,5,10,20};
-    std::vector<int> d_sweep{1,2,3,5,10,20};
-    std::vector<float> m_sweep{0.01,0.04,0.08,0.2};
-    std::vector<float> epk_sweep{0.05,0.1,0.2,0.4};
-    std::vector<float> epi_sweep{0.01,0.05,0.1,0.2};
-    std::vector<int> version{0,1,2};
+template<typename T>
+void print_vector(std::vector<T> v, std::string name)
+{
+    std::cout << name << ": ";
+    for(T i : v)
+        std::cout << i << ",";
+    std::cout << "\n";
+}
+
+void run_param_sweep(int num_args, char** args)
+{
+    int i = 2;
+    std::vector<int> k_sweep = int_range_inclusive(atoi(args[i]), atoi(args[i + 1]));
+    i += 2;
+    std::cout << "FIRST\n";
+    std::vector<int> i_sweep = int_range_inclusive(atoi(args[i]), atoi(args[i + 1]));
+    i += 2;
+    std::vector<int> d_sweep = int_range_inclusive(atoi(args[i]), atoi(args[i + 1]));
+    i += 2;
+    std::vector<float> m_sweep = float_range_inclusive(atof(args[i]), atof(args[i + 1]), atoi(args[i + 2]));
+    i += 3;
+    std::vector<float> epk_sweep = float_range_inclusive(atof(args[i]), atof(args[i + 1]), atoi(args[i + 2]));
+    i += 3;
+    std::vector<float> epi_sweep = float_range_inclusive(atof(args[i]), atof(args[i + 1]), atoi(args[i + 2]));
+    i += 3;
+    //std::vector<int> version = int_range_inclusive(1, atoi(args[i]));
+    std::vector<int> version = std::vector<int>{ atoi(args[i]) }; // only one version is supported right now.
+
+    SEED = atoi(args[i + 1]);
+
+    std::ostringstream os;
+    os << BASE_LOCATION;
+    os << "v2_";
+    for(int i = 2; i < num_args; ++i)
+    {
+        os << args[i] << "_";
+    }
+    os << ".csv";
+    RUN_FILE_NAME = os.str();
+
+    std::cout << "RUNNING PARAMETERS: \n";
+    print_vector<int>(k_sweep, "kill radius");
+    print_vector<int>(i_sweep, "inhibit radius");
+    print_vector<int>(d_sweep, "grow radius");
+    print_vector<float>(m_sweep, "mutation");
+    print_vector<float>(epk_sweep, "kill margin");
+    print_vector<float>(epi_sweep, "inhibit margin");
+    print_vector<int>(version, "version (repeats)");
 
     int total = k_sweep.size() * i_sweep.size() * d_sweep.size() * m_sweep.size() * epk_sweep.size() * epi_sweep.size() * version.size();
-    int count = 0;
+    NUM_RUNS_COUNTER = 0;
     float avg_time = 0.0;
+    std::cout << "TOTAL RUNS: " << total << "\n";
 
-    if(param_sweep)
+    for(int v : version) {
+        for(int k : k_sweep) {
+            for(int i : i_sweep) {
+                for(int d : d_sweep) {
+                    for(float m : m_sweep) {
+                        for(float ek : epk_sweep) {
+                            for(float ei : epi_sweep) {
+                                std::cout << "START: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
+                                float time_complete = run_step(k, i, d, ek, ei, m, v);
+                                if(avg_time == 0.0)
+                                    avg_time = time_complete;
+                                else
+                                    avg_time = 0.9*avg_time + 0.1*time_complete;
+                                std::cout << "DONE: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
+                                NUM_RUNS_COUNTER++;
+                                std::cout << "\t" << NUM_RUNS_COUNTER << "/" << total << "\n";
+                                std::cout << "PRED. TIME LEFT: " << avg_time*(total-NUM_RUNS_COUNTER)/(60.0*60.0) << "h\n";
+                            } } } } } } }
+}
+
+int main(int num_args, char** args)
+{
+    std::cout << "NUM ARGS: " << num_args << "\n";
+    for(int i = 0; i < num_args; ++i)
+        std::cout << i << ": " << args[i] << "\n";
+
+    if(num_args == 2)
     {
-	for(int v : version)
-	{
-		for(int k : k_sweep)
-		{
-			for(int i : i_sweep)
-			{
-				for(int d : d_sweep)
-				{
-					for(float m : m_sweep)
-					{
-						for(float ek : epk_sweep)
-						{
-							for(float ei : epi_sweep)
-							{
-								std::cout << "START: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
-								float time_complete = run_step(k, i, d, ek, ei, m, v);
-								if(avg_time == 0.0)
-									avg_time = time_complete;
-								else
-									avg_time = 0.9*avg_time + 0.1*time_complete;
-								std::cout << "DONE: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << ", " << v << "\n";
-								count += 1;
-								std::cout << "\t" << count << "/" << total << "\n";
-								std::cout << "PRED. TIME LEFT: " << avg_time*(total-count)/(60.0*60.0) << "h\n";
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+        BASE_LOCATION = args[1];
+        std::cout << "!- RUNNING NO PARAMETER SWEEP.\n";
+        run_step(KILL_RADIUS, INHIBIT_RADIUS, GROW_RADIUS, KILL_MARGIN, INHIBIT_MARGIN, MUTATE_SIZE, VERSION);
+    }
+    else if(num_args == 19)
+    {
+        BASE_LOCATION = args[1];
+        std::cout << "!- RUNNING PARAMETER SWEEP.\n";
+        run_param_sweep(num_args, args);
     }
     else
     {
-	std::cout << "RUNNING NO PARAMETER SWEEP.\n";
-    	run_step(KILL_RADIUS, INHIBIT_RADIUS, GROW_RADIUS, KILL_MARGIN, INHIBIT_MARGIN, MUTATE_SIZE, VERSION);
+        throw std::invalid_argument("arguments: <filename> (opt: <k_l> <k_h> <i_l> <i_h> <g_l> <g_h> <m_l> <m_h> <m_c> <epk_l> <epk_h> <epk_c> <epi_l> <epi_h> <epi_c> <v> <seed>)");
     }
 
     return 0;
