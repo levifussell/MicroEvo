@@ -14,6 +14,7 @@ But first, try it this way and see if it works. If it doesn't then follow the in
 
 (2) Compile the code using 'g++':
     (a) type and run in a terminal: g++ main_interactive.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out
+    or, g++ --std=c++11 main_interactive.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out
 
 (3) Run a test:
     (a) type and run in a terminal: ./run.out <save-location>
