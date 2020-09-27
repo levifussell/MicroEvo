@@ -9,6 +9,8 @@ job*.sh
 *.ipynb
 push_code_to_server.sh
 
+*INSTRUCTIONS*.md
+
 .ipynb_checkpoints/
 plots/
 data/
