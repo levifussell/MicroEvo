@@ -28,7 +28,7 @@ For those interested in running some experiments for themselves, we have outline
 
 (1) Clone the repository to a local path on your machine: `git clone https://github.com/levifussell/MicroEvo`.
 
-(2) You will need to download SFML, which is the low-level graphics library I use for rendering. First, try it the way we describe here. If this doesn't work for you, then follow the instructions [here](https://www.sfml-dev.org/tutorials/2.5/start-osx.php).
+(2) You will need to download SFML, which is the low-level graphics library we use for rendering. First, try it the way we describe here. If this doesn't work for you, then follow the instructions [here](https://www.sfml-dev.org/tutorials/2.5/start-osx.php).
 
 (3) Getting 'g++' installed. Try the following different options:
     (a) Type `g++` into a terminal and it might prompt you on how to install it (or it happens to be installed already.
@@ -46,7 +46,7 @@ or if that fails, `g++ --std=c++x0 main_param_select.cpp -lsfml-audio -lsfml-gra
 
 (6) Run a test:
     (a) type and run in a terminal: `./run.out <kill radius> <inhibit radius> <grow radius> <mutate size> <kill margin> <inhibit margin> <seed>`
-    (b) if the parameter values are reasonable, but the simulation is black, try changing the <seed>.
+    (b) if the parameter values are reasonable, but the simulation is black, try changing the `<seed>`.
 
 ### Abstract ###
 
