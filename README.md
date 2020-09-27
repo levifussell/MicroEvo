@@ -8,6 +8,20 @@ by Anshuman Swain<sup>\*</sup><sup>1</sup>, Levi Fussell<sup>\*</sup><sup>2</sup
 
 <sup>\*</sup>*contributed equally*
 
+<p float="left">
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/unknown1.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/chaotic1.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/cyclic1.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/stable3.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/cyclic2.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/edge-of-chaos1.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/stable2.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/chaotic2.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/long-static1.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/long-static2.gif", width="100"/>
+    <img src="https://github.com/levifussell/MicroEvo/blob/master/gifs/stable1.gif", width="100"/>
+</p>
+
 ### Instructions for Running the Interactive Process. ###
 
 For those interested in running some experiments for themselves, we have outlined the steps below for downloading the code base, compiling it, and running it locally on your machine. These steps focus on MacOS, but should also work for Linux.
