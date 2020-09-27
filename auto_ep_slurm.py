@@ -65,7 +65,7 @@ def run():
 
     print("META JOB: {}".format(jobs[0]))
 
-    # creates N 'embarassingly parallel' jobs. Job num be a power of two.
+    # creates N 'embarassingly parallel' jobs. Job num must be a power of two.
     if (num_jobs & (num_jobs - 1)) != 0 and num_jobs > 0:
         raise Exception("number of jobs must be a power of 2.");
 

@@ -390,20 +390,77 @@ void record_species_distributions()
 
 void save_species_distributions()
 {
-	std::ostringstream os;
-	os << BASE_LOCATION << "data/" << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
-	std::string name = os.str();
-	std::cout << "SAVING AT: " << name << "\n";
+	//std::ostringstream os;
+	//os << BASE_LOCATION << "data/" << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
+	//os << BASE_LOCATION << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
+	//std::string name = os.str();
+	std::cout << "SAVING AT: " << RUN_FILE_NAME << "\n";
 	std::fstream fout;
-	fout.open(name, std::ios::out);
+	fout.open(RUN_FILE_NAME, std::ios::out);
 	for(int k = 0; k < species_distributions.size(); ++k)
 	{
 		for(int j = 0; j < NUM_SPECIES; ++j)
 		{
-			fout << species_distributions.at(k).at(j) << ", ";
+			fout << species_distributions.at(k).at(j);
+            if(j < NUM_SPECIES - 1)
+                fout << ",";
 		}
 
 		fout << "\n";
+	}
+	fout.close();
+}
+
+void compute_shannon_diversity(std::vector<int> histogram, 
+        float& shannon_diversity, float& shannon_equit_index)
+{
+    // compute the mass of the histogram.
+    int total = 0;
+    for(int h : histogram)
+        total += h;
+    shannon_diversity = 0.0f;
+    for(int i = 0; i < histogram.size(); ++i)
+    {
+        float p = 0.0;
+        if(total > 0.0f)
+            p = (float)histogram.at(i) / (float)total;
+        
+        //assert (p >= 0.0);
+        if(p > 0.0)
+            shannon_diversity -= p * log2(p);
+    }
+
+    shannon_equit_index = shannon_diversity / log2(NUM_SPECIES);
+}
+
+std::vector<float> compute_shannon_diversity_over_time(
+        std::vector< std::vector<int> > data)
+{
+    std::vector<float> shannon_diversities(data.size());
+    for(int i = 0; i < data.size(); ++i)
+    {
+        float sd, eqi;
+        compute_shannon_diversity(data.at(i), sd, eqi);
+        shannon_diversities.at(i) = sd;
+    }
+    return shannon_diversities;
+}
+void save_shannon_diversity(std::string experimentName) //std::vector<float> shannon_diversity)
+{
+    std::vector<float> shannon_diversity = compute_shannon_diversity_over_time(species_distributions);
+
+
+	//std::ostringstream os;
+	//os << RUN_FI << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
+	//std::string name = os.str();
+	std::cout << "SAVING AT: " << RUN_FILE_NAME << "\n";
+	std::fstream fout;
+    fout.open(RUN_FILE_NAME, std::ios::out | std::ios::trunc);
+    fout << experimentName << "\n";
+    //
+	for(int k = 0; k < shannon_diversity.size(); ++k)
+	{
+        fout << shannon_diversity.at(k) << "\n";
 	}
 	fout.close();
 }
@@ -495,6 +552,9 @@ float run_step(
 
     bool headless = false;
 
+    std::ostringstream runNameStream;
+    runNameStream  << "PARAMS: " << kill_radius << ", " << inhibit_radius << ", " << grow_radius << ", " << mutate_size << ", " << kill_margin << ", " << inhibit_margin << ", " << version;
+    std::string runName = runNameStream.str();
 
     // comment & uncomment if headless (TOOD: make cleaner).
     sf::RenderWindow window(sf::VideoMode(SCREEN_SIZE, SCREEN_SIZE), "micro");
@@ -507,6 +567,8 @@ float run_step(
 
     clock_t begin_time = clock();
 
+    start_time = clock();
+    double start_delay = 0.0f;
     while(headless || window.isOpen())
     {
         //bool terminate = false;
@@ -517,7 +579,7 @@ float run_step(
             {
                 if(event.type == sf::Event::Closed)
                 {
-                    save_species_distributions();
+                    //save_species_distributions();
                     window.close();
                 }
                 if(event.type == sf::Event::KeyPressed)
@@ -528,14 +590,18 @@ float run_step(
             }
         //}
 
-        //if((clock() - start_time) / (double)CLOCKS_PER_SEC > sec_delay)
+        //if((clock() - start_time) / (double)CLOCKS_PER_SEC > start_delay)
         if(true) // just to remember the placeholder of slowing down the sim.
         {
             //std::cout << "UPDATE\n";
-            start_time = clock();
 
-            update();
-            //record_species_distributions();
+            if((clock() - start_time) / (double)CLOCKS_PER_SEC > start_delay)
+            {
+                update();
+                record_species_distributions();
+            }
+
+            //std::cout << "STEP: " << counter << "\n";
 
             if(!headless)
             {
@@ -559,8 +625,10 @@ float run_step(
         {
             terminate = false;
             //end_simulation_prompt();
-            //save_species_distributions();
-            save_all_run_stats();
+            save_species_distributions();
+            //save_all_run_stats();
+            //save_shannon_diversity(runName);
+
             if(!headless)
                 window.close();
             else
@@ -606,12 +674,19 @@ int main(int num_args, char** args)
  * vvvvv !!!! CHOOSE PARAMETER SWEEP HERE. --------------------------
  * vvvvv !!!! CHOOSE PARAMETER SWEEP HERE. --------------------------
  */
-    std::vector<int> k_sweep{10};
-    std::vector<int> i_sweep{10};
-    std::vector<int> d_sweep{10};
-    std::vector<float> m_sweep{0.0, 0.1, 0.2}; // 0.05, 0.075 <- Levi mutation rates. 
-    std::vector<float> epk_sweep{0.0, 0.25, 0.5}; // 0.05, 0.1, 0.15, 0.2
-    std::vector<float> epi_sweep{0.0, 0.25, 0.5}; // 0.05, 0.1, 0.15, 0.2
+    //std::vector<int> k_sweep{1};
+    //std::vector<int> i_sweep{1};
+    //std::vector<int> d_sweep{5};
+    //std::vector<float> m_sweep{0.1, 0.03, 0.05}; // 0.05, 0.075 <- Levi mutation rates. 
+    //std::vector<float> epk_sweep{0.5, 0.15, 0.2}; // 0.05, 0.1, 0.15, 0.2
+    //std::vector<float> epi_sweep{0.25, 0.15, 0.2}; // 0.05, 0.1, 0.15, 0.2
+    //std::vector<int> version{0,1,2};
+    std::vector<int> k_sweep{2};
+    std::vector<int> i_sweep{0};
+    std::vector<int> d_sweep{1};
+    std::vector<float> m_sweep{0.03, 0.03, 0.05}; // 0.05, 0.075 <- Levi mutation rates. 
+    std::vector<float> epk_sweep{0.2, 0.15, 0.2}; // 0.05, 0.1, 0.15, 0.2
+    std::vector<float> epi_sweep{0.03, 0.15, 0.2}; // 0.05, 0.1, 0.15, 0.2
     std::vector<int> version{0,1,2};
 /*
  * ^^^^^^ !!!! CHOOSE PARAMETER SWEEP HERE.--------------------------

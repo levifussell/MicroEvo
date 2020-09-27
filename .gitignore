@@ -1,5 +1,14 @@
-*.csv
+*.csv*
 *.swp
+*.un~
 *.tar.gz
 *.pdf
+*.out
+run*.sh
 job*.sh
+*.ipynb
+push_code_to_server.sh
+
+.ipynb_checkpoints/
+plots/
+data/

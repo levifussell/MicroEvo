@@ -73,6 +73,7 @@ std::vector<float> float_range_inclusive(float min, float max, int count);
 template<typename T>
 void print_vector(std::vector<T> v, std::string name);
 void run_param_sweep(int num_args, char** args);
+void run_params_from_doc_sweep(int num_args, char** args);
 
 std::vector<float> get_all_run_stats();
 void compute_shannon_diversity(std::vector<int> histogram, 
@@ -83,6 +84,8 @@ void compute_mean_var_shannon_diversity_over_time(
         std::vector< std::vector<int> > data,
         float& mean_shannon_diversity, float& var_shannon_diversity,
         float& mean_shannon_equit_index, float& var_shannon_equit_index);
+std::vector<float> compute_shannon_diversity_over_time(
+        std::vector< std::vector<int> > data);
 void save_species_distributions();
 void save_all_run_stats();
 
@@ -458,6 +461,19 @@ float variance(std::vector<float> v, float mean)
     return var;
 }
 
+std::vector<float> compute_shannon_diversity_over_time(
+        std::vector< std::vector<int> > data)
+{
+    std::vector<float> shannon_diversities(data.size());
+    for(int i = 0; i < data.size(); ++i)
+    {
+        float sd, eqi;
+        compute_shannon_diversity(data.at(i), sd, eqi);
+        shannon_diversities.at(i) = sd;
+    }
+    return shannon_diversities;
+}
+
 void compute_mean_var_shannon_diversity_over_time(
         std::vector< std::vector<int> > data,
         float& mean_shannon_diversity, float& var_shannon_diversity,
@@ -495,6 +511,21 @@ void save_species_distributions()
 		}
 
 		fout << "\n";
+	}
+	fout.close();
+}
+
+void save_shannon_diversity(std::vector<float> shannon_diversity)
+{
+	std::ostringstream os;
+	os << BASE_LOCATION << "k" << KILL_RADIUS << "_i" << INHIBIT_RADIUS << "_d" << GROW_RADIUS << "_m" << MUTATE_SIZE << "_epk" << KILL_MARGIN << "_epi" << INHIBIT_MARGIN << "_v" << VERSION << ".csv";
+	std::string name = os.str();
+	std::cout << "SAVING AT: " << name << "\n";
+	std::fstream fout;
+	fout.open(name, std::ios::out);
+	for(int k = 0; k < shannon_diversity.size(); ++k)
+	{
+        fout << shannon_diversity.at(k) << ", ";
 	}
 	fout.close();
 }
@@ -553,6 +584,8 @@ float run_step(
         {
             //save_species_distributions();
             save_all_run_stats();
+            //std::vector<float> sd = compute_shannon_diversity_over_time(species_distributions);
+            //save_shannon_diversity(sd);
             break;
         }
 
@@ -660,28 +693,135 @@ void run_param_sweep(int num_args, char** args)
                             } } } } } } }
 }
 
+void run_params_from_doc(int numargs, char** args)
+{
+    // first arg is a file location. Next arg is the range of rows to pull from that file.
+    if(numargs != 6)
+    {
+        std::cerr << "ARGS: " << numargs << ". Must have at least 5 arguments to run.\n";
+        return;
+    }
+    std::string file_location = args[2];
+    int rowLower = atoi(args[3]);
+    int rowUpper = atoi(args[4]);
+
+    std::fstream fin;
+    fin.open(file_location, std::ios::in);
+    std::string line;
+    std::cout << "RUNNING: \n";
+    std::vector<int> k_sweep;
+    std::vector<int> i_sweep;
+    std::vector<int> d_sweep;
+    std::vector<float> m_sweep;
+    std::vector<float> epk_sweep;
+    std::vector<float> epi_sweep;
+    int row_count = 0;
+    getline(fin, line); // header.
+    while(getline(fin, line))
+    {
+        if(row_count < rowLower || row_count >= rowUpper)
+        {
+            row_count++;
+            continue;
+        }
+
+        std::stringstream line_stream(line);
+        int col_count = 0;
+        while(line_stream.good())
+        {
+            std::string value;
+            getline(line_stream, value, ',');
+            if(col_count == 0) {
+                k_sweep.push_back(atoi(value.c_str()));
+            }
+            else if(col_count == 1) {
+                i_sweep.push_back(atoi(value.c_str()));
+            }
+            else if(col_count == 2) {
+                d_sweep.push_back(atoi(value.c_str()));
+            }
+            else if(col_count == 3) {
+                m_sweep.push_back(atof(value.c_str()));
+            }
+            else if(col_count == 4) {
+                epk_sweep.push_back(atof(value.c_str()));
+            }
+            else if(col_count == 5) {
+                epi_sweep.push_back(atof(value.c_str()));
+            }
+            col_count++;
+        }
+        std::cout << line << "\n";
+        row_count++;
+    }
+    fin.close();
+
+    SEED = atoi(args[5]);
+
+    std::ostringstream os;
+    os << BASE_LOCATION;
+    os << "v2_";
+    for(int i = 3; i < numargs; ++i)
+    {
+        os << args[i] << "_";
+    }
+    os << ".csv";
+    RUN_FILE_NAME = os.str();
+
+    //int total = k_sweep.size() * i_sweep.size() * d_sweep.size() * m_sweep.size() * epk_sweep.size() * epi_sweep.size();
+    int total = k_sweep.size();
+    NUM_RUNS_COUNTER = 0;
+    float avg_time = 0.0;
+    std::cout << "TOTAL RUNS: " << total << "\n";
+
+    // run the selected params.
+    for(int e = 0; e < k_sweep.size(); ++e)
+    {
+        int k = k_sweep.at(e);
+        int i = i_sweep.at(e);
+        int d = d_sweep.at(e);
+        float m = m_sweep.at(e);
+        float ek = epk_sweep.at(e);
+        float ei = epi_sweep.at(e);
+        std::cout << "START: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << "\n";
+        float time_complete = run_step(k, i, d, ek, ei, m, 0);
+        //float time_complete = 0.0;
+        if(avg_time == 0.0)
+            avg_time = time_complete;
+        else
+            avg_time = 0.9*avg_time + 0.1*time_complete;
+        std::cout << "DONE: " << k << ", " << i << ", " << d << ", " << m << ", " << ek << ", " << ei << "\n";
+        NUM_RUNS_COUNTER++;
+        std::cout << "\t" << NUM_RUNS_COUNTER << "/" << total << "\n";
+        std::cout << "PRED. TIME LEFT: " << avg_time*(total-NUM_RUNS_COUNTER)/(60.0*60.0) << "h\n";
+    }
+}
+
 int main(int num_args, char** args)
 {
     std::cout << "NUM ARGS: " << num_args << "\n";
     for(int i = 0; i < num_args; ++i)
         std::cout << i << ": " << args[i] << "\n";
 
-    if(num_args == 2)
-    {
-        BASE_LOCATION = args[1];
-        std::cout << "!- RUNNING NO PARAMETER SWEEP.\n";
-        run_step(KILL_RADIUS, INHIBIT_RADIUS, GROW_RADIUS, KILL_MARGIN, INHIBIT_MARGIN, MUTATE_SIZE, VERSION);
-    }
-    else if(num_args == 19)
-    {
-        BASE_LOCATION = args[1];
-        std::cout << "!- RUNNING PARAMETER SWEEP.\n";
-        run_param_sweep(num_args, args);
-    }
-    else
-    {
-        throw std::invalid_argument("arguments: <filename> (opt: <k_l> <k_h> <i_l> <i_h> <g_l> <g_h> <m_l> <m_h> <m_c> <epk_l> <epk_h> <epk_c> <epi_l> <epi_h> <epi_c> <v> <seed>)");
-    }
+    BASE_LOCATION = args[1];
+    run_params_from_doc(num_args, args);
+
+    //if(num_args == 2)
+    //{
+    //    BASE_LOCATION = args[1];
+    //    std::cout << "!- RUNNING NO PARAMETER SWEEP.\n";
+    //    run_step(KILL_RADIUS, INHIBIT_RADIUS, GROW_RADIUS, KILL_MARGIN, INHIBIT_MARGIN, MUTATE_SIZE, VERSION);
+    //}
+    //else if(num_args == 19)
+    //{
+    //    BASE_LOCATION = args[1];
+    //    std::cout << "!- RUNNING PARAMETER SWEEP.\n";
+    //    run_param_sweep(num_args, args);
+    //}
+    //else
+    //{
+    //    throw std::invalid_argument("arguments: <filename> (opt: <k_l> <k_h> <i_l> <i_h> <g_l> <g_h> <m_l> <m_h> <m_c> <epk_l> <epk_h> <epk_c> <epi_l> <epi_h> <epi_c> <v> <seed>)");
+    //}
 
     return 0;
 }
