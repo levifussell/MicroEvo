@@ -25,8 +25,10 @@ For those interested in running some experiments for themselves, we have outline
 
 (5) Compile the code using 'g++':
     (a) type and run in a terminal: `g++ main_param_select.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out`,
-    or if that fails, `g++ --std=c++11 main_param_select.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out`, 
-    or if that fails, `g++ --std=c++x0 main_param_select.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out`,
+    
+or if that fails, `g++ --std=c++11 main_param_select.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out`, 
+    
+or if that fails, `g++ --std=c++x0 main_param_select.cpp -lsfml-audio -lsfml-graphics -lsfml-window -lsfml-system -o run.out`,
 
 (6) Run a test:
     (a) type and run in a terminal: `./run.out <kill radius> <inhibit radius> <grow radius> <mutate size> <kill margin> <inhibit margin> <seed>`
